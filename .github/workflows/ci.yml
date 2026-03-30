@@ -7,7 +7,7 @@ on:
     branches: [ main, master ]
 
 jobs:
-  validate-notebook:
+  run-notebook:
     runs-on: ubuntu-latest
 
     steps:
@@ -29,30 +29,16 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt
 
-      - name: Check notebook exists
+      - name: Check required files
         run: |
           test -f "Modified_recognition_method.ipynb"
+          test -d "data/tracks"
+          test -d "data/query"
 
-      - name: Validate notebook structure
+      - name: Execute notebook
         run: |
-          python -c "import nbformat; nb = nbformat.read('Modified_recognition_method.ipynb', as_version=4); print(f'Notebook OK: {len(nb.cells)} cells')"
-
-      - name: Check Python syntax in notebook code cells
-        run: |
-          python - <<'PY'
-          import ast
-          import nbformat
-
-          path = "Modified_recognition_method.ipynb"
-          nb = nbformat.read(path, as_version=4)
-
-          code_cells = [cell["source"] for cell in nb.cells if cell.cell_type == "code"]
-
-          for i, code in enumerate(code_cells, start=1):
-              try:
-                  ast.parse(code)
-              except SyntaxError as e:
-                  raise SyntaxError(f"Syntax error in code cell #{i}: {e}")
-
-          print(f"Syntax check passed for {len(code_cells)} code cells.")
-          PY
+          jupyter nbconvert \
+            --to notebook \
+            --execute "Modified_recognition_method.ipynb" \
+            --output "executed_notebook.ipynb" \
+            --ExecutePreprocessor.timeout=1800
