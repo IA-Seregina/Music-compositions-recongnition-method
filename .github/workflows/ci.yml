@@ -1,0 +1,58 @@
+name: Notebook CI
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+
+jobs:
+  validate-notebook:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libsndfile1 ffmpeg
+
+      - name: Install Python dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Check notebook exists
+        run: |
+          test -f "Modified_recognition_method.ipynb"
+
+      - name: Validate notebook structure
+        run: |
+          python -c "import nbformat; nb = nbformat.read('Modified_recognition_method.ipynb', as_version=4); print(f'Notebook OK: {len(nb.cells)} cells')"
+
+      - name: Check Python syntax in notebook code cells
+        run: |
+          python - <<'PY'
+          import ast
+          import nbformat
+
+          path = "Modified_recognition_method.ipynb"
+          nb = nbformat.read(path, as_version=4)
+
+          code_cells = [cell["source"] for cell in nb.cells if cell.cell_type == "code"]
+
+          for i, code in enumerate(code_cells, start=1):
+              try:
+                  ast.parse(code)
+              except SyntaxError as e:
+                  raise SyntaxError(f"Syntax error in code cell #{i}: {e}")
+
+          print(f"Syntax check passed for {len(code_cells)} code cells.")
+          PY
